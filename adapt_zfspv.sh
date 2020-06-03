@@ -27,8 +27,8 @@ make bootstrap # TODO: don't run this every time
 ## zfs-driver.yaml uses hardcoded paths. Perhaps only relevant on Ubuntu?
 zfs_lib_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs.lib)/lib"
 zfs_bin_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs)/bin"
-sed -i '/\(mount\)\?[pP]ath: /s# /lib# @ZFS_LIB@/lib#g' deploy/yamls/zfs-driver.yaml
-sed -i '/\(mount\)\?[pP]ath: /s# /sbin# @ZFS_BIN@/sbin#g' deploy/yamls/zfs-driver.yaml
+sed -i '/path: /s# /lib# @ZFS_LIB@/lib#g' deploy/yamls/zfs-driver.yaml
+sed -i '/path: /s# /sbin# @ZFS_BIN@/sbin#g' deploy/yamls/zfs-driver.yaml
 
 ## Replace libraries
 sed -n '/@ZFS_LIB\+@/s/.*:\s\+@ZFS_LIB@\/lib\/\(.*\)/\1/gp' deploy/yamls/zfs-driver.yaml | while read -r lib; do
