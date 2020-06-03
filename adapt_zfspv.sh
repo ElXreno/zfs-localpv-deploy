@@ -30,6 +30,33 @@ zfs_bin_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs)/bin"
 sed -i '/path: /s# /lib# @ZFS_LIB@/lib#g' deploy/yamls/zfs-driver.yaml
 sed -i '/path: /s# /sbin# @ZFS_BIN@/sbin#g' deploy/yamls/zfs-driver.yaml
 
+## Inject /nix/store
+patch -p1 <<EOF
+diff -u a/deploy/yamls/zfs-driver.yaml b/deploy/yamls/zfs-driver.yaml
+--- a/deploy/yamls/zfs-driver.yaml
++++ b/deploy/yamls/zfs-driver.yaml
+@@ -778,6 +778,8 @@ spec:
+               mountPath: /dev
+             - name: encr-keys
+               mountPath: /home/keys
++            - name: nix-store
++              mountPath: /nix/store
+             - name: zfs-bin
+               mountPath: /sbin/zfs
+             - name: libzpool
+@@ -804,6 +806,10 @@ spec:
+           hostPath:
+             path: /home/keys
+             type: DirectoryOrCreate
++        - name: nix-store
++          hostPath:
++            path: /nix/store
++            type: Directory
+         - name: zfs-bin
+           hostPath:
+             path: /sbin/zfs
+EOF
+
 ## Replace libraries
 sed -n '/@ZFS_LIB\+@/s/.*:\s\+@ZFS_LIB@\/lib\/\(.*\)/\1/gp' deploy/yamls/zfs-driver.yaml | while read -r lib; do
 	# TODO: try to match minor versions

@@ -7,34 +7,7 @@ fi
 
 # Apply manifests
 kubectl apply -f ./zfs-operator.yaml
+kubectl apply -f ./storage-class.yaml
+kubectl patch storageclass openebs-zfspv -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
 kubectl get pods -n kube-system -l role=openebs-zfs
-
-# sc.yaml
-kubectl apply -f - <<EOF
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  name: openebs-zfspv
-parameters:
-  recordsize: "4k"
-  compression: "off"
-  dedup: "off"
-  fstype: "zfs"
-  poolname: "zfspv-pool"
-provisioner: zfs.csi.openebs.io
-EOF
-
-# pvc.yaml
-kubectl apply -f - <<EOF
-kind: PersistentVolumeClaim
-apiVersion: v1
-metadata:
-  name: csi-zfspv
-spec:
-  storageClassName: openebs-zfspv
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 9Gi
-EOF
