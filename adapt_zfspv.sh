@@ -4,19 +4,20 @@ set -e
 export GOPATH="${GOPATH:-${HOME}/go}"
 export PATH="${PATH}:${GOPATH}/bin"
 
+if [ ! -d zfs-localpv ]; then
+	git submodule update --init
+fi
+repopath="$(realpath ./zfs-localpv)"
+
 # See: https://github.com/openebs/zfs-localpv/blob/master/docs/developer-setup.md
 mkdir -v -p "${GOPATH}"/src/github.com/openebs
 pushd "${GOPATH}"/src/github.com/openebs 2>/dev/null
 
 # Set up zfs-localpv repository
-if [ ! -d zfs-localpv ]; then
-	git clone https://github.com/openebs/zfs-localpv.git
-	pushd zfs-localpv
-else
-	pushd zfs-localpv 2>/dev/null
-	git fetch
-	git reset --hard origin/master
-fi
+rm -rf zfs-localpv || true
+git clone "${repopath}" zfs-localpv
+pushd zfs-localpv 2>/dev/null
+
 
 # Patch scripts and run bootstrap
 sed -i 's:#!/bin/bash:#!/usr/bin/env bash:' buildscripts/generate-manifests.sh

@@ -1,0 +1,3 @@
+[submodule "zfs-localpv"]
+	path = zfs-localpv
+	url = https://github.com/openebs/zfs-localpv
