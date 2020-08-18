@@ -14,7 +14,7 @@ parameters:
   compression: "off"
   dedup: "off"
   fstype: "zfs"
-  poolname: "zfspv-pool"
+  poolname: "rpool/data/k8s-pvc"
 provisioner: zfs.csi.openebs.io
 
 # TODO: this is useless

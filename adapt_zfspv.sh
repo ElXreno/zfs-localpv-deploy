@@ -28,14 +28,14 @@ make bootstrap # TODO: don't run this every time
 ## zfs-driver.yaml uses hardcoded paths. Perhaps only relevant on Ubuntu?
 zfs_lib_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs.lib)/lib"
 zfs_bin_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs)/bin"
-sed -i '/path: /s# /lib# @ZFS_LIB@/lib#g' deploy/yamls/zfs-driver.yaml
-sed -i '/path: /s# /sbin# @ZFS_BIN@/sbin#g' deploy/yamls/zfs-driver.yaml
+sed -i '/path: /s# /lib# @ZFS_LIB@/lib#g' deploy/yamls/ubuntu/zfs-driver.yaml
+sed -i '/path: /s# /sbin# @ZFS_BIN@/sbin#g' deploy/yamls/ubuntu/zfs-driver.yaml
 
 ## Inject /nix/store
 patch -p1 <<EOF
-diff -u a/deploy/yamls/zfs-driver.yaml b/deploy/yamls/zfs-driver.yaml
---- a/deploy/yamls/zfs-driver.yaml
-+++ b/deploy/yamls/zfs-driver.yaml
+diff -u a/deploy/yamls/ubuntu/zfs-driver.yaml b/deploy/yamls/ubuntu/zfs-driver.yaml
+--- a/deploy/yamls/ubuntu/zfs-driver.yaml
++++ b/deploy/yamls/ubuntu/zfs-driver.yaml
 @@ -778,6 +778,8 @@ spec:
                mountPath: /dev
              - name: encr-keys
@@ -59,23 +59,23 @@ diff -u a/deploy/yamls/zfs-driver.yaml b/deploy/yamls/zfs-driver.yaml
 EOF
 
 ## Replace libraries
-sed -n '/@ZFS_LIB\+@/s/.*:\s\+@ZFS_LIB@\/lib\/\(.*\)/\1/gp' deploy/yamls/zfs-driver.yaml | while read -r lib; do
+sed -n '/@ZFS_LIB\+@/s/.*:\s\+@ZFS_LIB@\/lib\/\(.*\)/\1/gp' deploy/yamls/ubuntu/zfs-driver.yaml | while read -r lib; do
 	# TODO: try to match minor versions
 	test -f "${zfs_lib_dir}/${lib}" || {
 		echo ">>> Could not find a match for 'lib/${lib}'"
 		exit 1
 	}
-	sed -i 's#@ZFS_LIB@/lib/'"${lib}"'#'"${zfs_lib_dir}/${lib}"'#g' deploy/yamls/zfs-driver.yaml
+	sed -i 's#@ZFS_LIB@/lib/'"${lib}"'#'"${zfs_lib_dir}/${lib}"'#g' deploy/yamls/ubuntu/zfs-driver.yaml
 done
 
 ## Replace binaries
-sed -n '/@ZFS_BIN\+@/s/.*:\s\+@ZFS_BIN@\/sbin\/\(.*\)/\1/gp' deploy/yamls/zfs-driver.yaml | while read -r bin; do
+sed -n '/@ZFS_BIN\+@/s/.*:\s\+@ZFS_BIN@\/sbin\/\(.*\)/\1/gp' deploy/yamls/ubuntu/zfs-driver.yaml | while read -r bin; do
 	
 	test -f "${zfs_bin_dir}/${bin}" || {
 		echo ">>> Could not find a match for 'sbin/${bin}'"
 		exit 1
 	}
-	sed -i 's#@ZFS_BIN@/sbin/'"${bin}"'#'"${zfs_bin_dir}/${bin}"'#g' deploy/yamls/zfs-driver.yaml
+	sed -i 's#@ZFS_BIN@/sbin/'"${bin}"'#'"${zfs_bin_dir}/${bin}"'#g' deploy/yamls/ubuntu/zfs-driver.yaml
 done
 
 make manifests
