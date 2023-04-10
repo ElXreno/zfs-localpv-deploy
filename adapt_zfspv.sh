@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env nix-shell
+#!nix-shell -p gnumake go kubernetes-controller-tools -i bash
 set -e
 
 export GOPATH="${GOPATH:-${HOME}/go}"
@@ -21,62 +22,49 @@ pushd zfs-localpv 2>/dev/null
 
 # Patch scripts and run bootstrap
 sed -i 's:#!/bin/bash:#!/usr/bin/env bash:' buildscripts/generate-manifests.sh
+sed -i 's:GO111MODULE=on go get \$\$tool: GO111MODULE=on go install \$\$tool@latest:' Makefile
+sed -i 's:\:trivialVersions=false,preserveUnknownFields=false::' buildscripts/generate-manifests.sh
 make bootstrap # TODO: don't run this every time
 
 # Patch manifests and regenerate the bundle
 
-## zfs-driver.yaml uses hardcoded paths. Perhaps only relevant on Ubuntu?
-zfs_lib_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs.lib)/lib"
-zfs_bin_dir="$(nix-build '<nixos>' --no-build-output --no-out-link -A zfs)/bin"
-sed -i '/path: /s# /lib# @ZFS_LIB@/lib#g' deploy/yamls/ubuntu/zfs-driver.yaml
-sed -i '/path: /s# /sbin# @ZFS_BIN@/sbin#g' deploy/yamls/ubuntu/zfs-driver.yaml
-
 ## Inject /nix/store
 patch -p1 <<EOF
-diff -u a/deploy/yamls/ubuntu/zfs-driver.yaml b/deploy/yamls/ubuntu/zfs-driver.yaml
---- a/deploy/yamls/ubuntu/zfs-driver.yaml
-+++ b/deploy/yamls/ubuntu/zfs-driver.yaml
-@@ -778,6 +778,8 @@ spec:
+diff --git a/deploy/yamls/zfs-driver.yaml b/deploy/yamls/zfs-driver.yaml
+index b50db68..c5c67f2 100644
+--- a/deploy/yamls/zfs-driver.yaml
++++ b/deploy/yamls/zfs-driver.yaml
+@@ -954,8 +954,8 @@ metadata:
+ data:
+   zfs: |
+     #!/bin/sh
+-    if [ -x /host/sbin/zfs ]; then
+-      chroot /host /sbin/zfs "\$@"
++    if [ -x /host/run/current-system/sw/bin/zfs ]; then
++      chroot /host /run/current-system/sw/bin/zfs "\$@"
+     elif [ -x /host/usr/sbin/zfs ]; then
+       chroot /host /usr/sbin/zfs "\$@"
+     else
+@@ -1066,6 +1066,8 @@ spec:
                mountPath: /dev
              - name: encr-keys
                mountPath: /home/keys
 +            - name: nix-store
 +              mountPath: /nix/store
-             - name: zfs-bin
+             - name: chroot-zfs
                mountPath: /sbin/zfs
-             - name: libzpool
-@@ -804,6 +806,10 @@ spec:
+               subPath: zfs
+@@ -1087,6 +1089,9 @@ spec:
            hostPath:
              path: /home/keys
              type: DirectoryOrCreate
 +        - name: nix-store
 +          hostPath:
 +            path: /nix/store
-+            type: Directory
-         - name: zfs-bin
-           hostPath:
-             path: /sbin/zfs
+         - name: chroot-zfs
+           configMap:
+             defaultMode: 0555
 EOF
-
-## Replace libraries
-sed -n '/@ZFS_LIB\+@/s/.*:\s\+@ZFS_LIB@\/lib\/\(.*\)/\1/gp' deploy/yamls/ubuntu/zfs-driver.yaml | while read -r lib; do
-	# TODO: try to match minor versions
-	test -f "${zfs_lib_dir}/${lib}" || {
-		echo ">>> Could not find a match for 'lib/${lib}'"
-		exit 1
-	}
-	sed -i 's#@ZFS_LIB@/lib/'"${lib}"'#'"${zfs_lib_dir}/${lib}"'#g' deploy/yamls/ubuntu/zfs-driver.yaml
-done
-
-## Replace binaries
-sed -n '/@ZFS_BIN\+@/s/.*:\s\+@ZFS_BIN@\/sbin\/\(.*\)/\1/gp' deploy/yamls/ubuntu/zfs-driver.yaml | while read -r bin; do
-	
-	test -f "${zfs_bin_dir}/${bin}" || {
-		echo ">>> Could not find a match for 'sbin/${bin}'"
-		exit 1
-	}
-	sed -i 's#@ZFS_BIN@/sbin/'"${bin}"'#'"${zfs_bin_dir}/${bin}"'#g' deploy/yamls/ubuntu/zfs-driver.yaml
-done
 
 make manifests
 
